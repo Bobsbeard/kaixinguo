@@ -16,9 +16,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24 # Node 24 ships npm 11 — Node 20's npm 10.8.2 crashes on npm ci ("Exit handler never called!")
-          cache: "npm"
+          # NOTE: no npm caching here on purpose. The crashed npm runs saved a
+          # corrupted cache; restoring it makes npm ci fail on every run.
+      - name: Tune npm for flaky-network resilience
+        run: |
+          npm config set fetch-retries 5
+          npm config set fetch-retry-mintimeout 15000
+          npm config set fetch-retry-maxtimeout 120000
       - run: npm ci --no-audit --no-fund
-      - name: Verify install # npm has been known to fail with exit code 0 — make sure key packages actually landed
+      - name: Verify install # npm has failed with exit code 0 before — make sure key packages actually landed
         run: npm ls react typescript vite
       - run: npm run build
 
@@ -29,7 +35,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: "npm"
+      - name: Tune npm for flaky-network resilience
+        run: |
+          npm config set fetch-retries 5
+          npm config set fetch-retry-mintimeout 15000
+          npm config set fetch-retry-maxtimeout 120000
       - run: npm ci --no-audit --no-fund
       - name: Verify install
         run: npm ls react typescript vite
