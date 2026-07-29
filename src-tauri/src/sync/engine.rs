@@ -143,7 +143,7 @@ pub async fn run_sync(state: &AppState) -> Result<SyncReport, AppError> {
             pending: pending as usize,
             message: "Nothing to sync".into(),
             synced_at: Some(now()),
-        }));
+        });
     }
     if url.trim().is_empty() {
         return Err(AppError::SyncNotConfigured);
