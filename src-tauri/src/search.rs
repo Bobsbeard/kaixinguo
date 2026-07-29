@@ -107,7 +107,7 @@ fn search_hanzi(conn: &Connection, q: &str, limit: usize) -> Result<Vec<EntrySum
             "SELECT {COLS} FROM entries WHERE simplified = ?1 OR traditional = ?1 \
              ORDER BY char_len, id LIMIT ?2"
         ))?;
-        push_rows(&mut stmt, rusqlite::params![q, limit as i64].as_slice(), limit, &mut seen, &mut out)?;
+        push_rows(&mut stmt, rusqlite::params![q, limit as i64], limit, &mut seen, &mut out)?;
     }
     {
         let mut stmt = conn.prepare(&format!(
@@ -115,7 +115,7 @@ fn search_hanzi(conn: &Connection, q: &str, limit: usize) -> Result<Vec<EntrySum
              (simplified LIKE ?1 ESCAPE '\\' OR traditional LIKE ?1 ESCAPE '\\') \
              ORDER BY char_len, id LIMIT ?2"
         ))?;
-        push_rows(&mut stmt, rusqlite::params![like_prefix, limit as i64].as_slice(), limit, &mut seen, &mut out)?;
+        push_rows(&mut stmt, rusqlite::params![like_prefix, limit as i64], limit, &mut seen, &mut out)?;
     }
     {
         let mut stmt = conn.prepare(&format!(
@@ -123,7 +123,7 @@ fn search_hanzi(conn: &Connection, q: &str, limit: usize) -> Result<Vec<EntrySum
              (simplified LIKE ?1 ESCAPE '\\' OR traditional LIKE ?1 ESCAPE '\\') \
              ORDER BY char_len, id LIMIT ?2"
         ))?;
-        push_rows(&mut stmt, rusqlite::params![like_contains, limit as i64].as_slice(), limit, &mut seen, &mut out)?;
+        push_rows(&mut stmt, rusqlite::params![like_contains, limit as i64], limit, &mut seen, &mut out)?;
     }
     Ok(out)
 }
@@ -138,14 +138,14 @@ fn search_latin(conn: &Connection, q: &str, limit: usize) -> Result<Vec<EntrySum
         let mut stmt = conn.prepare(&format!(
             "SELECT {COLS} FROM entries WHERE pinyin_flat = ?1 ORDER BY char_len, id LIMIT ?2"
         ))?;
-        push_rows(&mut stmt, rusqlite::params![flat, limit as i64].as_slice(), limit, &mut seen, &mut out)?;
+        push_rows(&mut stmt, rusqlite::params![flat, limit as i64], limit, &mut seen, &mut out)?;
         // 2) pinyin prefix (skip 1-letter queries to avoid noise)
         if flat.len() >= 2 && out.len() < limit {
             let mut stmt = conn.prepare(&format!(
                 "SELECT {COLS} FROM entries WHERE pinyin_flat LIKE ?1 || '%' \
                  ORDER BY char_len, id LIMIT ?2"
             ))?;
-            push_rows(&mut stmt, rusqlite::params![flat, limit as i64].as_slice(), limit, &mut seen, &mut out)?;
+            push_rows(&mut stmt, rusqlite::params![flat, limit as i64], limit, &mut seen, &mut out)?;
         }
     }
 
@@ -167,7 +167,7 @@ fn search_latin(conn: &Connection, q: &str, limit: usize) -> Result<Vec<EntrySum
                 "SELECT {COLS} FROM entries e JOIN fts_english f ON f.entry_id = e.id \
                  WHERE fts_english MATCH ?1 ORDER BY e.char_len, e.id LIMIT ?2"
             ))?;
-            push_rows(&mut stmt, rusqlite::params![m, limit as i64].as_slice(), limit, &mut seen, &mut out)?;
+            push_rows(&mut stmt, rusqlite::params![m, limit as i64], limit, &mut seen, &mut out)?;
         }
     }
     Ok(out)

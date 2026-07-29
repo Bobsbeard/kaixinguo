@@ -11,7 +11,7 @@ mod lists;
 mod search;
 mod sync;
 
-use tauri::State;
+use tauri::{Manager, State};
 
 use db::{lock, AppState};
 use error::AppError;
