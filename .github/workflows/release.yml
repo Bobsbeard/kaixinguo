@@ -46,7 +46,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24 # npm 11 — avoids the npm 10.8.2 "Exit handler never called!" crash
-          cache: "npm"
+          # No npm cache: earlier crashed runs poisoned the saved cache.
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -60,6 +60,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: |
+          npm config set fetch-retries 5
+          npm config set fetch-retry-mintimeout 15000
+          npm config set fetch-retry-maxtimeout 120000
           npm ci --no-audit --no-fund
           npm ls react typescript vite # fail loudly if npm silently broke the install
 
