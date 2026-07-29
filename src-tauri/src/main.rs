@@ -56,17 +56,19 @@ fn main() {
                     // in a log file and a native dialog instead of exiting
                     // silently (the "window flashes and closes" symptom).
                     let detail = e.to_string();
+                    let mut log_desc = String::from("the app data folder");
                     if let Ok(dir) = app.path().app_data_dir() {
                         let _ = std::fs::create_dir_all(&dir);
+                        let log_path = dir.join("startup-error.log");
                         let _ = std::fs::write(
-                            dir.join("startup-error.log"),
+                            &log_path,
                             format!("Pistachio Dictionary failed to start:\n\n{detail}\n"),
                         );
+                        log_desc = log_path.display().to_string();
                     }
                     app.dialog()
                         .message(format!(
-                            "Pistachio Dictionary could not start.\n\n{detail}\n\n\
-                             Details were saved to startup-error.log in the app data folder."
+                            "Pistachio Dictionary could not start.\n\n{detail}\n\nDetails: {log_desc}"
                         ))
                         .title("Pistachio Dictionary — startup error")
                         .blocking_show();
