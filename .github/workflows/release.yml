@@ -45,7 +45,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24 # npm 11 — avoids the npm 10.8.2 "Exit handler never called!" crash
           cache: "npm"
 
       - name: Install Rust stable
@@ -59,7 +59,9 @@ jobs:
           workspaces: "./src-tauri -> target"
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: |
+          npm ci --no-audit --no-fund
+          npm ls react typescript vite # fail loudly if npm silently broke the install
 
       - name: Build and upload to release
         uses: tauri-apps/tauri-action@v0
