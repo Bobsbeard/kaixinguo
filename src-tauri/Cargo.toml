@@ -1,6 +1,6 @@
 [package]
 name = "pistachio-dictionary"
-version = "0.1.0"
+version = "0.1.1"
 description = "Pistachio Dictionary (开心果词典) — offline Chinese-English dictionary with word-list sync"
 edition = "2021"
 rust-version = "1.77"
