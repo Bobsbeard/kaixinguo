@@ -7,8 +7,30 @@
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard};
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OpenFlags};
 use tauri::{AppHandle, Manager};
+
+/// Build a SQLite `file:` URI that opens the dictionary read-only
+/// (`mode=ro`). Percent-encodes everything outside a small safe set so
+/// Windows backslashes, spaces and non-ASCII profile names survive.
+/// Read-only matters: installed into "Program Files", a standard user
+/// cannot open the DB read-write, and SQLite would refuse to open it.
+fn dict_file_uri(path: &std::path::Path) -> String {
+    let mut s = path.to_string_lossy().replace('\\', "/");
+    if !s.starts_with('/') {
+        s = format!("/{s}"); // Windows drive path: C:/... -> /C:/...
+    }
+    let mut out = String::from("file:");
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'/' | b'.' | b'-' | b'_' | b':' => {
+                out.push(b as char)
+            }
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    format!("{out}?mode=ro")
+}
 
 use crate::error::AppError;
 
@@ -107,15 +129,23 @@ pub fn init(app: &AppHandle) -> Result<AppState, AppError> {
     let dict_path = dict_db_path(app)?;
     let user_path = user_db_path(app)?;
 
-    let dict = Connection::open(&dict_path)?;
+    // The bundled dictionary is opened strictly read-only: it lives under
+    // the install dir (e.g. Program Files), where standard users may not
+    // write, and SQLite refuses a read-write open it cannot perform.
+    let dict = Connection::open_with_flags(&dict_path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     dict.execute_batch("PRAGMA query_only = ON;")?;
 
-    let user = Connection::open(&user_path)?;
+    let user = Connection::open_with_flags(
+        &user_path,
+        OpenFlags::SQLITE_OPEN_READ_WRITE
+            | OpenFlags::SQLITE_OPEN_CREATE
+            | OpenFlags::SQLITE_OPEN_URI,
+    )?;
     user.execute_batch(USER_SCHEMA)?;
-    // Attach the dictionary so list queries can join `dict.entries`.
+    // Attach the dictionary (read-only) so list queries can join `dict.entries`.
     user.execute(
         "ATTACH DATABASE ?1 AS dict",
-        rusqlite::params![dict_path.to_string_lossy().to_string()],
+        rusqlite::params![dict_file_uri(&dict_path)],
     )?;
     user.execute_batch("PRAGMA foreign_keys = ON;")?;
 

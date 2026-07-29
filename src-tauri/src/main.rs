@@ -12,6 +12,7 @@ mod search;
 mod sync;
 
 use tauri::{Manager, State};
+use tauri_plugin_dialog::DialogExt;
 
 use db::{lock, AppState};
 use error::AppError;
@@ -45,9 +46,33 @@ fn main() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
-            let state = db::init(app.handle())?;
-            app.manage(state);
-            Ok(())
+            match db::init(app.handle()) {
+                Ok(state) => {
+                    app.manage(state);
+                    Ok(())
+                }
+                Err(e) => {
+                    // Release builds have no console: surface startup failures
+                    // in a log file and a native dialog instead of exiting
+                    // silently (the "window flashes and closes" symptom).
+                    let detail = e.to_string();
+                    if let Ok(dir) = app.path().app_data_dir() {
+                        let _ = std::fs::create_dir_all(&dir);
+                        let _ = std::fs::write(
+                            dir.join("startup-error.log"),
+                            format!("Pistachio Dictionary failed to start:\n\n{detail}\n"),
+                        );
+                    }
+                    app.dialog()
+                        .message(format!(
+                            "Pistachio Dictionary could not start.\n\n{detail}\n\n\
+                             Details were saved to startup-error.log in the app data folder."
+                        ))
+                        .title("Pistachio Dictionary — startup error")
+                        .blocking_show();
+                    Err(e.into())
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             // dictionary
